@@ -27,3 +27,9 @@ Rubric:
 5. The report file has tables with the performance data for the different configurations, as well as for the speedup obtained.
 6. The report file has the computer's characteristics, as well as the conclusions.
 
+**NOTES**
+
+1. No report was added.
+2. The code only does matrix multiplication for CPU and CPU with threads. The GPU version is missing.
+
+**Grade: 0; The code does not compile**
