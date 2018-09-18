@@ -20,16 +20,23 @@ NOTE: Push only the Pdf file and the source code. Modify the .gitignore file as 
 
 Rubric:
 
-1. Matrices are properly initialized.
-2. Matrices are properly multiplied both in CPU and in GPU.
-3. GPU code is initialized correctly.
-4. The code is readable and commented as needed.
-5. The report file has tables with the performance data for the different configurations, as well as for the speedup obtained.
-6. The report file has the computer's characteristics, as well as the conclusions.
+1. Matrices are properly initialized. *Complete*
+2. Matrices are properly multiplied both in CPU and in GPU. *Complete*
+3. GPU code is initialized correctly. *Complete*
+4. The code is readable and commented as needed. *Complete*
+5. The report file has tables with the performance data for the different configurations, as well as for the speedup obtained. *Incomplete*
+6. The report file has the computer's characteristics, as well as the conclusions. *Complete*
 
 **NOTES**
 
-1. No report was added.
-2. The code only does matrix multiplication for CPU and CPU with threads. The GPU version is missing.
+1. A validation of the gpu matrix multiplication against a CPU version is missing. How do you know the results is correct?
+2. Missing test with different configurations of grids and blocks: 2D grid with 2D blocks, for example.
+3. Speedups are missing from the report.
+4. Why do you think the 4000x4000 multiplication failed?
+5. Results were expected in tables, not just the raw data.
 
+**First revision**
 **Grade: 0; The code does not compile**
+
+**Second revision**
+**Grade: 80; 56 for late submission**
