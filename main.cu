@@ -1,3 +1,4 @@
+// Compile with: nvcc -o out -Wno-deprecated-gpu-targets main.cu -std=c++1
 #include "common.h"
 #include <cstdio>
 #include <chrono>
@@ -47,14 +48,23 @@ void inCPUWithThreads(int *A, int *B, int *C, const int nx, const int ny)
 
 __global__ void cudaWithBlocksAndThreads(int *MatA, int *MatB, int *MatC, const int nx, const int ny)
 {
+    //Codigo de clase
     unsigned int ix = threadIdx.x + blockIdx.x * blockDim.x;
+    int i, j;
 
-    if (ix < nx )
-        for (int iy = 0; iy < ny; iy++)
+    if (ix < nx)
+    {
+        for (i = 0; i < nx; i++)
         {
-            int idx = iy * nx + ix;
-            MatC[idx] = MatA[idx] + MatB[idx];
+            for (j = 0; j < ny; j++)
+            {
+                MatC[ix * nx + i] += (MatA[ix * nx + j] * MatB[j * nx + i]);
+            }
         }
+
+    }
+
+    return;
 }
 
 void initialData(int *ip, const int size)
@@ -73,10 +83,18 @@ int main(int argc, char const *argv[])
 
     // Set up data size of matrix
     int size = 0;
+    int algorithm = 0;
     if(argc < 2)
         size = 1000;
-    else
+    else if (argc == 2)
+    {
         size = stoi(argv[1]);
+    }
+    else if (argc == 3)
+    {
+        size = stoi(argv[1]);
+        algorithm = stoi(argv[2]);
+    }
 
     int nx = size;
     int ny = size;
@@ -98,18 +116,24 @@ int main(int argc, char const *argv[])
 
     // Start Matrix Multiplication and timer
     // CPU No Threads
-    auto start =  chrono::high_resolution_clock::now();
-    inCPUWithoutThreads(h_A, h_B, hostRefNoThreads, nx, ny);
-    auto end =  chrono::high_resolution_clock::now();
-    chrono::duration<float, std::milli> duration_ms = end - start;
-    printf("inCPUWithoutThreads elapsed %f ms\n", duration_ms.count());
+    if (algorithm == 0)
+    {
+        auto start =  chrono::high_resolution_clock::now();
+        inCPUWithoutThreads(h_A, h_B, hostRefNoThreads, nx, ny);
+        auto end =  chrono::high_resolution_clock::now();
+        chrono::duration<float, std::milli> duration_ms = end - start;
+        printf("inCPUWithoutThreads elapsed %f ms\n", duration_ms.count());
+    }
 
     // CPU OMP Threads
-    start = chrono::high_resolution_clock::now();
-    inCPUWithThreads(h_A, h_B, hostRefThreads, nx, ny);
-    end = chrono::high_resolution_clock::now();
-    duration_ms = end - start;
-    printf("inCPUWithThreads elapsed %f ms\n", duration_ms.count());
+    if (algorithm == 1)
+    {
+        auto start = chrono::high_resolution_clock::now();
+        inCPUWithThreads(h_A, h_B, hostRefThreads, nx, ny);
+        auto end = chrono::high_resolution_clock::now();
+        chrono::duration<float, std::milli> duration_ms = end - start;
+        printf("inCPUWithThreads elapsed %f ms\n", duration_ms.count());
+    }
 
     // Malloc device global memory
     int *d_MatA, *d_MatB, *d_MatC;
@@ -122,20 +146,22 @@ int main(int argc, char const *argv[])
     SAFE_CALL(cudaMemcpy(d_MatB, h_B, nBytes, cudaMemcpyHostToDevice), "Error copying d_MatB");
 
     // invoke kernel at host side
-    int dimx = 256;
+    int dimx = 32;
     dim3 block(dimx, 1);
     dim3 grid((nx + block.x - 1) / block.x, 1);
 
-    start_cpu =  chrono::high_resolution_clock::now();
-    sumMatrixOnGPU1D<<<grid, block>>>(d_MatA, d_MatB, d_MatC, nx, ny);
-    SAFE_CALL(cudaDeviceSynchronize(), "Error executing kernel");
-    end_cpu =  chrono::high_resolution_clock::now();
-
-    duration_ms = end_cpu - start_cpu;
-
-    printf("cudaWithBlocksAndThreads <<<(%d,%d), (%d,%d)>>> elapsed %f ms\n", grid.x,
-           grid.y,
-           block.x, block.y, duration_ms.count());
+    if (algorithm == 2)
+    {
+        auto start =  chrono::high_resolution_clock::now();
+        cudaWithBlocksAndThreads<<<grid, block>>>(d_MatA, d_MatB, d_MatC, nx, ny);
+        SAFE_CALL(cudaDeviceSynchronize(), "Error executing kernel");
+        auto end =  chrono::high_resolution_clock::now();
+        chrono::duration<float, std::milli> duration_ms = end - start;
+        printf("cudaWithBlocksAndThreads <<<(%d,%d), (%d,%d)>>> elapsed %f ms\n",
+               grid.x,
+               grid.y,
+               block.x, block.y, duration_ms.count());
+    }
 
     // SAFE_CALL kernel error
     SAFE_CALL(cudaGetLastError(), "Error with last error");
@@ -154,8 +180,9 @@ int main(int argc, char const *argv[])
     // free host memory
     free(h_A);
     free(h_B);
-    free(hostRefWithoutThreads);
-    free(hostRefWithThreads);
+    free(hostRefNoThreads);
+    free(hostRefThreads);
+    free(gpuRefThreads);
 
     // reset device
     SAFE_CALL(cudaDeviceReset(), "Error reseting");
